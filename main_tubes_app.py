@@ -4,6 +4,7 @@ import socket
 import time
 from tkinter import messagebox
 from configparser import ConfigParser
+import textwrap
 
 class MyFrame(Frame):
     def __init__(self):
@@ -49,8 +50,11 @@ class MyFrame(Frame):
         self.update_entry_button = Button(self, text="Update Entry", command=self.update_entry_in_amos)
         self.update_entry_button.grid(row=7, column=0, sticky=W)
 
+        self.print_barcode_button = Button(self, text="Print Barcode", command=self.print_barcode)
+        self.print_barcode_button.grid(row=8, column=0, sticky=W)
+
         self.close_button = Button(self, text="Quit", command=Frame.quit)
-        self.close_button.grid(row=8, column=0, sticky=W)
+        self.close_button.grid(row=9, column=0, sticky=W)
 
     def request_json_of_barcode(self, barcode_id):
 
@@ -150,6 +154,63 @@ class MyFrame(Frame):
         else:
             pass
 
+    def print_barcode(self):
+
+        zebra_printer_ip = parser.get('config_file', 'zebra_printer_ip')  # set to IP address of target computer
+        zebra_printer_port = int(parser.get('config_file', 'zebra_printer_port'))
+
+        zpl = """
+        ^XA
+        ^FO60,60
+        ^A0,20,20
+        ^FB250,8,,
+        ^FD 12345678910123456789012 \& 12345678910123456789012 \& 12345678910123456789012 \& 12345678910123456789012 \& 12345678910123456789012 \& 12345678910123456789012 \& 12345678910123456789012 \& 12345678910123456789012 \& 12345678910123456789012
+        ^FS
+        ^XZ
+        """
+
+        zpl = """
+        ^XA
+        ^FO60,60
+        ^A0,20,20
+        ^FB250,8,,
+        ^FD
+        """
+
+        #item name
+        zpl += str(self.itemnameText.get()) + """\&"""
+        #ldf id
+        zpl += str(self.ldfidText.get()) + """\&"""
+
+        #wrap the text at 22 characters
+        wrapped_text_for_print = textwrap.wrap(str(self.guiitemdescription.get("1.0",'end-1c')), 22)
+
+        print(len(wrapped_text_for_print))
+
+        for x in wrapped_text_for_print:
+            print(x)
+
+        #add 6 lines of text to the string
+        counter = 0
+        for textline in wrapped_text_for_print:
+
+            zpl += textline + """\&"""
+
+            counter += 1
+            if counter == 6:
+                break
+
+        zpl += """
+        ^FS
+        ^XZ
+        """
+
+
+        #connect to printer and print
+        s_print = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s_print.connect((zebra_printer_ip, zebra_printer_port))
+        s_print.send(zpl.encode())
+        s_print.close()
 
 if __name__ == "__main__":
     parser = ConfigParser()
